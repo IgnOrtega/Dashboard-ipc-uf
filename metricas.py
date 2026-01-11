@@ -5,6 +5,10 @@ import formato
 
 def obtener_valor_uf_hoy(datos):
     fecha_hoy=np.datetime64('today')
+    
+    if fecha_hoy>=max(datos.reset_index()["Fecha"]):
+        fecha_hoy=max(datos.reset_index()["Fecha"])
+
     valor_uf_hoy=datos.loc[datos["Fecha"]==fecha_hoy,"UF"].values[0]
     return valor_uf_hoy
 
@@ -25,16 +29,30 @@ def obtener_ultima_var_mensual(uf_mensual):
     return (periodo_actual-periodo_anterior)/periodo_anterior
 
 def obtener_var_accum(data_mensual):
-    obj=list(data_mensual.columns)[1]
-    periodo_actual=data_mensual.sort_values(by="Fecha", ascending=False).iloc[0,1]
-    
-    fecha_hoy=np.datetime64('today')
-    anio=fecha_hoy.astype('datetime64[Y]')
-    fecha_inicial=np.datetime64(f"{anio}-01-01")
-    primer_periodo=data_mensual.loc[data_mensual["Fecha"]==fecha_inicial,obj].values[0]
-    
-    return (periodo_actual-primer_periodo)/primer_periodo
+    obj = data_mensual.columns[1]
 
+    data_mensual["Fecha"] = pd.to_datetime(data_mensual["Fecha"]) # Asegurar que Fecha sea datetime64[ns]
+
+    
+    periodo_actual = (  data_mensual
+                        .sort_values(by="Fecha", ascending=False)
+                        .iloc[0][obj] )
+
+    fecha_max = data_mensual["Fecha"].max()
+    fecha_hoy = pd.Timestamp.today().normalize()
+
+    if fecha_hoy > fecha_max:
+        fecha_hoy = fecha_max
+    anio = fecha_hoy.year
+
+    fecha_inicial = pd.Timestamp(year=anio, month=1, day=1)  # Fecha inicial del año
+
+    # Primer valor del año
+    primer_periodo = (  data_mensual
+                        .loc[data_mensual["Fecha"] == fecha_inicial, obj]
+                        .iloc[0] )
+
+    return (periodo_actual - primer_periodo) / primer_periodo
 
 def obtener_var_periodo(data_por_periodo):
     metrica_valores = data_por_periodo.iloc[:, 1].values
