@@ -1,110 +1,105 @@
 import plotly.graph_objects as go
 import formato
 
-
-def crear_figura(x_uf,y_uf,name_uf,x_ipc,y_ipc,name_ipc, title_plot, tipo_funcion="1"):
-
-    # Crear figura
+def crear_figura_comparativa(x_uf, y_uf, name_uf, x_ipc, y_ipc, name_ipc, title_plot, es_porcentaje=False):
+    """
+    Genera un gráfico con fondo neutro adaptativo y barra de herramientas visible.
+    """
     fig = go.Figure()
 
-    
     fig.add_trace(go.Scatter(
-        x=x_uf,
-        y=y_uf,
-        mode='lines',
-        name=name_uf
+        x=x_uf, y=y_uf, mode='lines', name=name_uf,
+        line=dict(width=3, color='#007bff')
     ))
 
     fig.add_trace(go.Scatter(
-        x=x_ipc,
-        y=y_ipc,
-        mode='lines',
-        name=name_ipc
+        x=x_ipc, y=y_ipc, mode='lines', name=name_ipc,
+        line=dict(width=3, color='#ff7f0e')
     ))
 
-
-    # Configuración del hover vertical
     fig.update_layout(
-        hovermode='x unified',   # Hover vertical unificado
-        hoverlabel=dict(
-            bgcolor="white",     # Fondo del tooltip
-            font_size=12,
-            font_family="Arial"
+        hovermode='x unified',
+        title=dict(
+            text=title_plot,
+            x=0.02,
+            font=dict(size=18)
         ),
-        template='plotly_white', # Tema visual limpio
-        title= title_plot
+        
+        # Fondo adaptativo
+        paper_bgcolor='rgba(128, 128, 128, 0.12)', 
+        plot_bgcolor='rgba(128, 128, 128, 0.05)',
+        
+        font=dict(family="Source Sans Pro, sans-serif"),
+        
+        legend=dict(
+            orientation="h", 
+            yanchor="bottom", 
+            y=1.02, 
+            xanchor="right", 
+            x=0.98,
+            bgcolor='rgba(0,0,0,0)'
+        ),
+        
+        margin=dict(l=20, r=20, t=60, b=40),
+        
+        xaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            linecolor='rgba(128, 128, 128, 0.3)',
+            zeroline=False
+        ),
+        yaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            linecolor='rgba(128, 128, 128, 0.3)',
+            zeroline=False,
+            tickformat=',.2%' if es_porcentaje else ".4~s"
+        ),
+
+        # CORRECCIÓN DE BARRA DE HERRAMIENTAS (Modebar):
+        # Forzamos un color que sea visible en ambos temas.
+        modebar=dict(
+            bgcolor='rgba(0,0,0,0)', # Fondo transparente
+            color='#888',           # Gris medio para los iconos
+            activecolor='#007bff'   # Azul cuando se pasa el mouse
+        )
     )
     
-
-    if tipo_funcion=="porc":
-        fig.update_yaxes(tickformat=',.2%')    
-    else:
-        fig.update_yaxes(tickformat=".4~s")
     return fig
 
+def tarjeta_kpi(valor_principal, delta, bool_delta=True, es_porcentaje_valor=False, 
+                es_porcentaje_delta=False, nombre_medida="KPI", etiqueta_delta=""):
+    """
+    Genera una tarjeta KPI con fondo neutro adaptativo.
+    """
+    color_subida = "#28a745"
+    color_bajada = "#dc3545"
+    
+    signo = "▲" if delta >= 0 else "▼"
+    color_signo = color_subida if delta >= 0 else color_bajada
 
-def tarjeta_kpi(profit, mom_change,bool_delta=True,porcentaje_profit=False, porcentaje_delta=False,medida_nombre="kpi",label_delta=""):
-    # Formateos equivalentes
-    _profit = profit
-    _change = mom_change
-    _sign = "▲" if mom_change >= 0 else "▼"
-    _sign_color = "green" if mom_change >= 0 else "red"
+    txt_valor = formato.formatear_numero(valor_principal, decimales=2, porcentaje=es_porcentaje_valor)
+    txt_delta = formato.formatear_numero(delta, decimales=2, porcentaje=es_porcentaje_delta)
 
-    _profit=formato.formatear_numero(_profit, decimales=2, porcentaje=porcentaje_profit, separador_miles=True)
-    _change=formato.formatear_numero(_change, decimales=2, porcentaje=porcentaje_delta, separador_miles=True)    
-    _profit=_profit.replace(",",":")
-    _profit=_profit.replace(".",",")
-    _profit=_profit.replace(":",".")
+    # Construir el HTML sin indentaciones extra que puedan romper el renderizado de st.markdown
+    html_card = (
+        f'<div style="padding: 20px; border-radius: 12px; background-color: rgba(128, 128, 128, 0.15); '
+        f'border: 1px solid rgba(128, 128, 128, 0.2); font-family: \'Source Sans Pro\', sans-serif; '
+        f'min-height: 120px; display: flex; flex-direction: column; justify-content: center; '
+        f'box-shadow: 0 2px 4px rgba(0,0,0,0.05);">'
+        f'<div style="font-size: 0.85rem; font-weight: 500; color: #888; margin-bottom: 5px; '
+        f'text-transform: uppercase; letter-spacing: 0.5px;">{nombre_medida}</div>'
+        f'<div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 5px; line-height: 1.2;">{txt_valor}</div>'
+    )
 
-    _change=_change.replace(",",":")
-    _change=_change.replace(".",",")
-    _change=_change.replace(":",".")
-
-    html_inicio="""
-<table style='width:200px; height:150px; border:1px solid; 
-            border-color:#d3d3d300; border-radius: 15px;
-            background-color:#eff066'>
-<tbody>
-"""
-
-    medida_principal=f"""
-<tr style='border: 0px solid rgba(211, 211, 211, 0)';>
-    <td style='width: 2%; border: 0px solid rgba(211, 211, 211, 0);'></td>
-    <td style='width: 98%; border: 0px solid rgba(211, 211, 211, 0); color: black'>
-        {medida_nombre} &emsp;
-        <b> 
-            <span style='font-size:30px'>
-                {_profit}
-            </span> 
-        </b>
-    </td>
-</tr>
-"""
-
-    medida_delta=f"""
-<tr style='border: 0px solid rgba(211, 211, 211, 0)';>
-    <td style='width: 2%; border: 0px solid rgba(211, 211, 211, 0)';></td>
-    <td style='width: 98%; border: 0px solid rgba(211, 211, 211, 0)';>
-        <span style='color:{_sign_color}; font-size: 18px;"'>
-            {_sign}
-        </span>
-        <b>
-            <span style='font-size:14px; color:black'>
-                {_change}
-            </span>
-        </b>
-        <span style='font-size:12px; color:black'>&nbsp; {label_delta}</span>
-    </td>
-</tr>
-"""
-    html_final="""
-</tbody>
-</table>
-"""
     if bool_delta:
-        codigo_html=html_inicio+ medida_principal+medida_delta+html_final
-    else:
-        codigo_html=html_inicio+ medida_principal +html_final
-    return codigo_html
-
-
+        html_card += (
+            f'<div style="display: flex; align-items: center; gap: 5px; margin-top: auto;">'
+            f'<span style="color: {color_signo}; font-size: 1rem;">{signo}</span>'
+            f'<span style="font-size: 0.95rem; font-weight: 600; color: {color_signo};">{txt_delta}</span>'
+            f'<span style="font-size: 0.75rem; color: #888; margin-left: 2px;">{etiqueta_delta}</span>'
+            f'</div>'
+        )
+    
+    html_card += "</div>"
+    return html_card

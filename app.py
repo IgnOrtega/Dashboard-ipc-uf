@@ -3,174 +3,133 @@ import metricas
 import figuras
 import formato 
 
-
-
-
-#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----
-#-----                      Cargar datos 
-#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----
-dir="./data/IPC_empalmadas/"
-filename="ipc_2009.csv"
-ipc_mensual=formato.cargar_ipc_empalmadas(dir, filename)
-
-dir = "./data/UF/"
-uf_diario=formato.concadenar_datos_uf(dir)
-uf_diario=uf_diario.dropna()
-uf_diario=uf_diario.reset_index()
-cols=uf_diario.columns
-dict_name={cols[1]:"UF"}
-uf_diario=uf_diario.rename(mapper=dict_name, axis=1)
-uf_mensual=metricas.obtener_uf_por_periodo(uf_diario)                  # Obtener UF por periodos mensuales
-
-
-# Valores tarjetas kpi
-valor_uf_hoy=metricas.obtener_valor_uf_hoy(uf_diario)                  # Obtener Valor de UF de Hoy
-
-uf_ultimo_periodo=metricas.obtener_ultimo_periodo(uf_mensual)          # Obtener valor UF ultimo periodo
-ipc_ultimo_periodo=metricas.obtener_ultimo_periodo(ipc_mensual)        # Obtener valor IPC ultimo periodo
-
-uf_ultima_var_mensual=metricas.obtener_ultima_var_mensual(uf_mensual)  # 
-ipc_ultima_var_mensual=metricas.obtener_ultima_var_mensual(ipc_mensual)
-
-uf_ultima_var_anual=metricas.obtener_var_accum(uf_mensual)
-ipc_ultima_var_anual=metricas.obtener_var_accum(ipc_mensual)
-
-
-#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----
-#-----                      Inicio Dashboard
-#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#-----
-# Definir valores por defecto del widget del gráfico 2.
-DEFAULT_VALUES = {
-    "suavizado": "Ninguno",  # Valor predeterminado para el radio button
-    "window": 1,             # Valor predeterminado para el slider
-    "periocidad": "Anual",             
-}
-# --- 2. Funciones de Estado y Reset ---
-def initialize_session_state():
-    """Inicializa el estado de sesión con los valores predeterminados si no existen."""
-    for key, default_value in DEFAULT_VALUES.items():
-        if key not in st.session_state:
-            st.session_state[key] = default_value
-
-def reset_filters():
-    """Función que sobrescribe los valores del estado de sesión con los predeterminados.
-    
-    Esta función se asigna al argumento 'on_click' del botón Reset.
-    """
-    for key, default_value in DEFAULT_VALUES.items():
-        st.session_state[key] = default_value
-
-# Inicializamos el estado ANTES de que se ejecuten los widgets
-initialize_session_state()
-
 # --- Configuración de la página ---
 st.set_page_config(page_title="Dashboard UF/IPC", page_icon="📊", layout="wide")
 
+# --- 1. Carga de datos con Caché ---
+@st.cache_data
+def load_data():
+    dir_ipc = "./data/IPC_empalmadas/"
+    filename_ipc = "ipc_2009.csv"
+    ipc_mensual = formato.cargar_ipc_empalmadas(dir_ipc, filename_ipc)
+
+    dir_uf = "./data/UF/"
+    uf_diario = formato.concatenar_datos_uf(dir_uf)
+    uf_mensual = metricas.obtener_uf_mensual(uf_diario)
+    
+    return uf_diario, uf_mensual, ipc_mensual
+
+uf_diario, uf_mensual, ipc_mensual = load_data()
+
+# --- 2. Cálculo de métricas clave ---
+valor_uf_hoy = metricas.obtener_valor_uf_hoy(uf_diario)
+uf_ultimo_periodo = metricas.obtener_ultimo_valor(uf_mensual)
+ipc_ultimo_periodo = metricas.obtener_ultimo_valor(ipc_mensual)
+
+# Asegurar valores numéricos para evitar problemas en el renderizado HTML
+uf_ultima_var_mensual = metricas.calcular_variacion_mensual(uf_mensual) or 0.0
+ipc_ultima_var_mensual = metricas.calcular_variacion_mensual(ipc_mensual) or 0.0
+
+uf_ultima_var_anual = metricas.calcular_variacion_anual_acumulada(uf_mensual) or 0.0
+ipc_ultima_var_anual = metricas.calcular_variacion_anual_acumulada(ipc_mensual) or 0.0
+
+# --- 3. Gestión de Estado de la Sesión ---
+DEFAULT_VALUES = {
+    "suavizado": "Ninguno",
+    "window": 1,
+    "periodicidad": "Anual",
+}
+
+def initialize_session_state():
+    for key, val in DEFAULT_VALUES.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+
+def reset_filters():
+    for key, val in DEFAULT_VALUES.items():
+        st.session_state[key] = val
+
+initialize_session_state()
+
+# --- 4. Interfaz Principal ---
 st.title("Dashboard Comparación UF e IPC")
 
-
-
-# Parte 1: target card
+# Parte 1: Tarjetas KPI
 st.markdown("## Medidas claves de UF e IPC")
-col1, col2, col3, col4, col5 = st.columns([1, 1, 1,1,1])  # col2 será el doble de ancho que col1 y col3
+col1, col2, col3, col4, col5 = st.columns(5)
+
 with col1:
-    medida_nombre="UF de Hoy"
-    code_html=figuras.tarjeta_kpi(valor_uf_hoy, valor_uf_hoy,bool_delta=False, medida_nombre=medida_nombre)
-    st.markdown(code_html,unsafe_allow_html=True)    
+    nombre_medida="UF de Hoy"
+    code_HTML_figura=figuras.tarjeta_kpi(valor_uf_hoy, 0, bool_delta=False, nombre_medida=nombre_medida)
+    st.markdown(code_HTML_figura ,unsafe_allow_html=True)    
 
 with col2:
-    medida_nombre="Último Periodo UF"
-    code_html=figuras.tarjeta_kpi(uf_ultimo_periodo, uf_ultima_var_mensual, porcentaje_profit=False, porcentaje_delta=True,medida_nombre=medida_nombre, label_delta="Var. Último Mes.")
-    st.markdown(code_html,unsafe_allow_html=True)    
+    code_HTML_figura=figuras.tarjeta_kpi(uf_ultimo_periodo, uf_ultima_var_mensual, 
+                                    es_porcentaje_delta=True, nombre_medida="Último Periodo UF", 
+                                    etiqueta_delta="Var. Último Mes")
+
+    st.markdown(code_HTML_figura, unsafe_allow_html=True)    
 
 with col3:
-    medida_nombre="Var. Anual Acum. UF"        
-    code_html=figuras.tarjeta_kpi(uf_ultima_var_anual, uf_ultima_var_anual,porcentaje_profit=True,bool_delta=False,medida_nombre=medida_nombre)
-    st.markdown(code_html,unsafe_allow_html=True)    
+    st.markdown(figuras.tarjeta_kpi(uf_ultima_var_anual, 0, bool_delta=False, 
+                                    es_porcentaje_valor=True, nombre_medida="Var. Anual Acum. UF"), unsafe_allow_html=True)    
 
 with col4:
-    medida_nombre="Último Periodo IPC"
-    code_html=figuras.tarjeta_kpi(ipc_ultimo_periodo, ipc_ultima_var_mensual,porcentaje_profit=False,porcentaje_delta=True,medida_nombre=medida_nombre, label_delta="Var. Último Mes.")
-    st.markdown(code_html,unsafe_allow_html=True)     
+    st.markdown(figuras.tarjeta_kpi(ipc_ultimo_periodo, ipc_ultima_var_mensual, 
+                                    es_porcentaje_delta=True, nombre_medida="Último Periodo IPC", 
+                                    etiqueta_delta="Var. Último Mes"), unsafe_allow_html=True)     
 
 with col5:
-    medida_nombre="Var. Anual Acum. IPC"        
-    code_html=figuras.tarjeta_kpi(ipc_ultima_var_anual, ipc_ultima_var_anual,porcentaje_profit=True,medida_nombre=medida_nombre,bool_delta=False)
-    st.markdown(code_html,unsafe_allow_html=True)     
+    st.markdown(figuras.tarjeta_kpi(ipc_ultima_var_anual, 0, bool_delta=False, 
+                                    es_porcentaje_valor=True, nombre_medida="Var. Anual Acum. IPC"), unsafe_allow_html=True)     
 
-
-
-# Parte 2: Grafica UF e IPC
+# Parte 2: Gráfico de Valores Absolutos
 st.markdown("## Comparación entre valor UF y IPC")
+st.info("Nota: El IPC se escala por un factor de 1000/3 para facilitar la comparación visual directa con el valor de la UF.")
 
-x_uf=uf_mensual["Fecha"]
-y_uf=uf_mensual["UF"]
-name_uf="UF"
-x_ipc=ipc_mensual["Fecha"]
-y_ipc=ipc_mensual["IPC"]*1_000/3
-name_ipc="IPC x1000 /3"
-title_plot="Comparación UF v/s IPC"
-fig=figuras.crear_figura(x_uf,y_uf,name_uf,x_ipc,y_ipc,name_ipc, title_plot)
-st.plotly_chart(fig, use_container_width=True)  
+x_uf = uf_mensual["Fecha"]
+y_uf = uf_mensual["UF"]
+x_ipc = ipc_mensual["Fecha"]
+y_ipc = ipc_mensual["IPC"] * 1000 / 3
 
+fig_valores = figuras.crear_figura_comparativa(
+    x_uf, y_uf, "UF", 
+    x_ipc, y_ipc, "IPC (escalado)", 
+    "Comparación Histórica de Niveles"
+)
+st.plotly_chart(fig_valores, use_container_width=True)  
 
-# Parte 3: Grafica Var. UF e IPC
-st.markdown("## Comparación entre variación valor UF y IPC")
-col1, col2, col3, col4 = st.columns([0.5,1, 1, 1])
+# Parte 3: Análisis de Variaciones
+st.markdown("## Análisis de Variación Porcentual")
+c1, c2, c3, c4 = st.columns([0.5, 1, 1, 1])
 
-with col1:
-    # Radio Button vinculado a st.session_state["suavizado"]
-    periocidad = st.radio(
-        "Periocidad:",
-        ["Mensual", "Anual"],
-        horizontal=False,
-        key="periocidad"
-    )
+with c1:
+    st.radio("Periodicidad:", ["Mensual", "Anual"], key="periodicidad")
 
-with col2:
-    suavizado = st.radio(
-        "Aplicar suavizado:",
-        ["Ninguno", "Media móvil", "Mediana móvil"],
-        horizontal=False,
-        key="suavizado"
-    )
+with c2:
+    st.radio("Suavizado:", ["Ninguno", "Media móvil", "Mediana móvil"], key="suavizado")
 
-with col3: 
-    window = st.slider(
-        "Tamaño de ventana de suavizado:",
-        min_value=1,
-        max_value=10,
-        step=1,
-        key="window" 
-    )
+with c3: 
+    st.slider("Ventana de suavizado:", min_value=1, max_value=12, step=1, key="window")
 
-# --- Botón de reset (Soft Reset) ---
-with col4:
-    # Usamos on_click para ejecutar la función de reseteo, que cambiará los valores en st.session_state
-    st.button(
-        "🔁 Reiniciar Filtros",
-        on_click=reset_filters,
-        type="primary"
-    )
+with c4:
+    st.markdown("<br>", unsafe_allow_html=True) # Espaciado
+    st.button("🔁 Reiniciar Filtros", on_click=reset_filters, type="primary")
 
-uf_periodo=metricas.var_por_periodo(uf_mensual,periocidad)   # Cambio de periocidad 
-ipc_periodo=metricas.var_por_periodo(ipc_mensual,periocidad) # Cambio de periocidad
+# Procesamiento dinámico de variaciones
+uf_var_df = metricas.procesar_por_periodicidad(uf_mensual, st.session_state["periodicidad"])
+ipc_var_df = metricas.procesar_por_periodicidad(ipc_mensual, st.session_state["periodicidad"])
 
-uf_periodo=formato.suavizamiento_funcion(uf_periodo, suavizado,window)   # Suavizamiento
-ipc_periodo=formato.suavizamiento_funcion(ipc_periodo, suavizado,window) # Suavizamiento
+# Aplicar suavizado si es necesario
+uf_var_df = formato.aplicar_suavizado(uf_var_df, st.session_state["suavizado"], st.session_state["window"])
+ipc_var_df = formato.aplicar_suavizado(ipc_var_df, st.session_state["suavizado"], st.session_state["window"])
 
-x_uf=uf_periodo["Fecha"]
-x_ipc=ipc_periodo["Fecha"]
-
-y_uf=uf_periodo["Var_porc_UF"]
-y_ipc=ipc_periodo["Var_porc_IPC"]
-
-name_uf="Var. UF%"
-name_ipc="Var. IPC%"
-title_plot="Comparación Variación UF v/s IPC"
-fig=figuras.crear_figura(x_uf,y_uf,name_uf,x_ipc,y_ipc,name_ipc, title_plot, tipo_funcion="porc")
-st.plotly_chart(fig, use_container_width=True)
+fig_var = figuras.crear_figura_comparativa(
+    uf_var_df["Fecha"], uf_var_df["Var_porc_UF"], "Var. UF%", 
+    ipc_var_df["Fecha"], ipc_var_df["Var_porc_IPC"], "Var. IPC%", 
+    f"Comparación de Variaciones ({st.session_state['periodicidad']})",
+    es_porcentaje=True
+)
+st.plotly_chart(fig_var, use_container_width=True)
 
 st.markdown("---")
-
-
