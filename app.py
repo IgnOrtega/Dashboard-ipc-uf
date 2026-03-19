@@ -9,6 +9,13 @@ st.set_page_config(page_title="Dashboard UF/IPC", page_icon="📊", layout="wide
 # --- 1. Carga de datos con Caché ---
 @st.cache_data
 def load_data():
+    """
+    Carga y procesa los datos históricos de IPC y UF desde archivos locales.
+    Utiliza el decorador @st.cache_data para evitar procesamientos repetitivos.
+
+    Returns:
+        tuple: (uf_diario, uf_mensual, ipc_mensual) DataFrames procesados.
+    """
     dir_ipc = "./data/IPC_empalmadas/"
     filename_ipc = "ipc_2009.csv"
     ipc_mensual = formato.cargar_ipc_empalmadas(dir_ipc, filename_ipc)
@@ -41,11 +48,17 @@ DEFAULT_VALUES = {
 }
 
 def initialize_session_state():
+    """
+    Inicializa las variables de estado de la sesión de Streamlit con valores por defecto.
+    """
     for key, val in DEFAULT_VALUES.items():
         if key not in st.session_state:
             st.session_state[key] = val
 
 def reset_filters():
+    """
+    Reinicia los filtros de la aplicación (suavizado, ventana y periodicidad) a sus valores iniciales.
+    """
     for key, val in DEFAULT_VALUES.items():
         st.session_state[key] = val
 

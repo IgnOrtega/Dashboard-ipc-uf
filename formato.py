@@ -4,7 +4,16 @@ import streamlit as st
 
 @st.cache_data
 def cargar_ipc_empalmadas(dir_path, filename):
-    """Carga y procesa el archivo de IPC mensual."""
+    """
+    Carga y procesa el archivo de IPC mensual desde un CSV con formato específico.
+
+    Args:
+        dir_path (str): Ruta al directorio que contiene el archivo.
+        filename (str): Nombre del archivo CSV.
+
+    Returns:
+        pd.DataFrame: DataFrame con columnas ['Fecha', 'IPC'] ordenado por fecha.
+    """
     file_full_path = os.path.join(dir_path, filename)
     df = pd.read_csv(file_full_path, sep=";", encoding="utf-8")
     
@@ -24,7 +33,16 @@ def cargar_ipc_empalmadas(dir_path, filename):
     return df[["Fecha", "IPC"]].sort_values("Fecha")
 
 def formatear_csv_uf(df, anio):
-    """Procesa un DataFrame individual de UF anual."""
+    """
+    Transforma un DataFrame de UF anual (formato ancho con días/meses) a formato largo (serie temporal).
+
+    Args:
+        df (pd.DataFrame): DataFrame original cargado del CSV de la UF.
+        anio (int): Año al que corresponden los datos.
+
+    Returns:
+        pd.Series: Serie temporal con la fecha como índice y el valor de la UF como dato.
+    """
     # Transformar a formato largo (melt)
     df_long = df.melt(id_vars="Día", var_name="Mes", value_name="Valor")
 
@@ -57,7 +75,15 @@ def formatear_csv_uf(df, anio):
 
 @st.cache_data
 def concatenar_datos_uf(dir_path):
-    """Lee todos los CSV de UF en la carpeta y los une en un solo DataFrame."""
+    """
+    Busca y concatena todos los archivos CSV de UF en una carpeta para formar una sola serie histórica.
+
+    Args:
+        dir_path (str): Ruta a la carpeta que contiene los archivos CSV anuales de la UF.
+
+    Returns:
+        pd.DataFrame: DataFrame unificado con columnas ['Fecha', 'UF'].
+    """
     archivos = [f for f in os.listdir(dir_path) if f.endswith(".csv")]
     todos_los_datos = []
 
@@ -79,15 +105,26 @@ def concatenar_datos_uf(dir_path):
     return df_final
 
 def formatear_numero(valor, decimales=2, porcentaje=False, separador_miles=True):
-    """Formatea números al estilo chileno (punto para miles, coma para decimales)."""
+    """
+    Formatea un número según el estándar chileno (punto para miles, coma para decimales).
+
+    Args:
+        valor (float): El número a formatear.
+        decimales (int): Cantidad de decimales a mostrar.
+        porcentaje (bool): Si es True, multiplica por 100 y añade el símbolo '%'.
+        separador_miles (bool): Si es True, incluye separador de miles.
+
+    Returns:
+        str: El número formateado como cadena de texto.
+    """
     if pd.isna(valor):
         return "—"
 
     if porcentaje:
         valor *= 100
 
-    formato = "{:,.%df}" % decimales
-    resultado = formato.format(valor)
+    formato_str = "{:,.%df}" % decimales
+    resultado = formato_str.format(valor)
     
     # Intercambiar puntos y comas para formato ES/CL
     # 1,234.56 -> 1.234,56
@@ -96,14 +133,32 @@ def formatear_numero(valor, decimales=2, porcentaje=False, separador_miles=True)
     return f"{resultado}%" if porcentaje else resultado
 
 def filtrar_periodicidad_anual(data):
-    """Filtra solo el primer día de cada año."""
+    """
+    Filtra un DataFrame para mantener únicamente el registro del primer día de cada año.
+
+    Args:
+        data (pd.DataFrame): DataFrame con columna 'Fecha'.
+
+    Returns:
+        pd.DataFrame: DataFrame filtrado con frecuencia anual.
+    """
     df = data.copy()
     df['Mes'] = df['Fecha'].dt.month
     df['Dia'] = df['Fecha'].dt.day
     return df[(df['Mes'] == 1) & (df['Dia'] == 1)][["Fecha", data.columns[1]]]
 
 def aplicar_suavizado(df_periodo, metodo, window):
-    """Aplica suavizado a la columna de variación porcentual."""
+    """
+    Aplica una técnica de suavizado (Media o Mediana móvil) a la serie de variaciones porcentuales.
+
+    Args:
+        df_periodo (pd.DataFrame): DataFrame que contiene una columna de variación porcentual.
+        metodo (str): Método de suavizado ('Media móvil', 'Mediana móvil' o 'Ninguno').
+        window (int): Tamaño de la ventana para el suavizado.
+
+    Returns:
+        pd.DataFrame: DataFrame con la serie suavizada.
+    """
     if metodo == "Ninguno" or window <= 1:
         return df_periodo
         

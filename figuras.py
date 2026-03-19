@@ -3,7 +3,20 @@ import formato
 
 def crear_figura_comparativa(x_uf, y_uf, name_uf, x_ipc, y_ipc, name_ipc, title_plot, es_porcentaje=False):
     """
-    Genera un gráfico con fondo neutro adaptativo y barra de herramientas visible.
+    Genera un gráfico de líneas comparativo utilizando Plotly con un diseño adaptativo.
+
+    Args:
+        x_uf (pd.Series): Eje X (fechas) para la serie UF.
+        y_uf (pd.Series): Eje Y (valores) para la serie UF.
+        name_uf (str): Etiqueta para la serie UF en la leyenda.
+        x_ipc (pd.Series): Eje X (fechas) para la serie IPC.
+        y_ipc (pd.Series): Eje Y (valores) para la serie IPC.
+        name_ipc (str): Etiqueta para la serie IPC en la leyenda.
+        title_plot (str): Título del gráfico.
+        es_porcentaje (bool, optional): Si es True, formatea el eje Y como porcentaje. Por defecto es False.
+
+    Returns:
+        plotly.graph_objects.Figure: Objeto de figura de Plotly listo para ser renderizado.
     """
     fig = go.Figure()
 
@@ -70,7 +83,19 @@ def crear_figura_comparativa(x_uf, y_uf, name_uf, x_ipc, y_ipc, name_ipc, title_
 def tarjeta_kpi(valor_principal, delta, bool_delta=True, es_porcentaje_valor=False, 
                 es_porcentaje_delta=False, nombre_medida="KPI", etiqueta_delta=""):
     """
-    Genera una tarjeta KPI con fondo neutro adaptativo.
+    Genera el código HTML para una tarjeta KPI con diseño personalizado y adaptativo.
+
+    Args:
+        valor_principal (float): El valor numérico principal a mostrar.
+        delta (float): El valor de variación o cambio.
+        bool_delta (bool, optional): Si es True, muestra la sección de variación. Por defecto es True.
+        es_porcentaje_valor (bool, optional): Si es True, formatea el valor principal como porcentaje.
+        es_porcentaje_delta (bool, optional): Si es True, formatea el delta como porcentaje.
+        nombre_medida (str, optional): Título de la tarjeta. Por defecto es "KPI".
+        etiqueta_delta (str, optional): Texto descriptivo junto al delta. Por defecto es "".
+
+    Returns:
+        str: Cadena de texto con código HTML listo para st.markdown(..., unsafe_allow_html=True).
     """
     color_subida = "#28a745"
     color_bajada = "#dc3545"
